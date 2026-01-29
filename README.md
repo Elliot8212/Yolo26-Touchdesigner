@@ -63,3 +63,7 @@ If `lapx` fails to build and you don’t need tracking, you can omit it (overlay
 - No output: ensure an input TOP is connected and the selected model matches the task (e.g., seg model for masks).
 - Missing Python modules: rerun the pip install command with TD’s Python.
 - Tracking slowdown or errors: switch `Tracker` to `None` if `lapx` is unavailable or performance is critical.
+- Installing requirements with system Python 3.11:  
+  ```powershell
+  py -3.11 -m pip install -r requirements.txt --prefer-binary
+  ```
