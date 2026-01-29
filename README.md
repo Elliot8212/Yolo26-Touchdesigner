@@ -53,6 +53,11 @@ If `lapx` fails to build and you don’t need tracking, you can omit it (overlay
   - `detections`: columns `id, Object Type, Confidence, X_Center, Y_Center, Width, Height` (IDs are tracker-stable when tracking is on).
   - `pose_points`: columns `det_id, kp_id, x, y` (for pose models).
 
+## Demos
+- Detection: ![Detection](Assets/detect.gif)
+- Segmentation: ![Segmentation](Assets/seg.gif)
+- Pose: ![Pose](Assets/pose.gif)
+
 ## Notes
 - Use `*-seg.pt` models for masks; `*-pose.pt` for keypoints.  
 - If tracking reports a missing `lap` module, either install `lapx` or set `Tracker` to `None`.  
