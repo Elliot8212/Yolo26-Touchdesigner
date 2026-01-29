@@ -1,6 +1,7 @@
 # TouchDesigner + YOLO26 (Script TOP)
 
-Python Script TOP for TouchDesigner that runs YOLO v2.6 models (detection, segmentation, pose) with prompt filtering, native YOLO overlay or mask output, and optional tracking (ByteTrack / BoT-SORT) for stable IDs and colors.
+Python Script TOP for TouchDesigner that runs YOLO v2.6 models (detection, segmentation, pose) with prompt filtering, native YOLO overlay or mask output, and optional tracking (ByteTrack / BoT-SORT) for stable IDs and colors.  
+![Detection](Assets/detect.gif) ![Segmentation](Assets/seg.gif) ![Pose](Assets/pose.gif)
 
 ## Features
 - Preset model menu (det / seg / pose variants of YOLO26).
@@ -52,11 +53,6 @@ If `lapx` fails to build and you don’t need tracking, you can omit it (overlay
 - DATs (if present):
   - `detections`: columns `id, Object Type, Confidence, X_Center, Y_Center, Width, Height` (IDs are tracker-stable when tracking is on).
   - `pose_points`: columns `det_id, kp_id, x, y` (for pose models).
-
-## Demos
-- Detection: ![Detection](Assets/detect.gif)
-- Segmentation: ![Segmentation](Assets/seg.gif)
-- Pose: ![Pose](Assets/pose.gif)
 
 ## Notes
 - Use `*-seg.pt` models for masks; `*-pose.pt` for keypoints.  
