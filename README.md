@@ -24,9 +24,10 @@ Python Script TOP for TouchDesigner that runs YOLO v2.6 models (detection, segme
   - `lapx` (needed for ByteTrack / BoT-SORT tracking)
 
 ## Installation
-Use TouchDesigner’s Python to install dependencies:
+1. Install NVIDIA CUDA (driver/toolkit) first.  
+2. Run the provided installer batch to use TouchDesigner’s Python and install CUDA-enabled PyTorch plus all requirements:
 ```powershell
-"C:\Program Files\Derivative\TouchDesigner.2023.xxxxx\bin\python.exe" -m pip install -r requirements.txt --prefer-binary
+install_td.bat
 ```
 If `lapx` fails to build and you don’t need tracking, you can omit it (overlay/mask still work).
 
@@ -38,7 +39,8 @@ If `lapx` fails to build and you don’t need tracking, you can omit it (overlay
 5) (Optional) Create two DATs named `detections` and `pose_points` if you want tabular outputs.
 
 ## Parameters (Script TOP)
-- `Model` — choose a YOLO26 weight (det/seg/pose variants bundled in the repo).
+- `Model` — choose a YOLO26 weight (det/seg/pose variants bundled in the repo).  
+- `CustomPath` — path to a custom `.pt` model (only used when `Model` = `custom`).  
 - `PromptClasses` — comma/semicolon list of class names or IDs to keep.
 - `Confidence` — detection confidence threshold.
 - `Output` — `overlay` (YOLO native draw) or `mask`.

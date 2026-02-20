@@ -31,6 +31,7 @@ def onSetupParameters(scriptOp):
         "yolo26s-pose.pt",
         "yolo26m-pose.pt",
         "yolo26l-pose.pt",
+        "custom",
     )
     p_model.menuLabels = (
         "Nano (det)",
@@ -44,7 +45,10 @@ def onSetupParameters(scriptOp):
         "Small (pose)",
         "Medium (pose)",
         "Large (pose)",
+        "Custom path",
     )
+
+    page.appendStr("Modelpath", label="CustomPath")
 
     page.appendStr("Prompt", label="PromptClasses")
 
@@ -282,7 +286,11 @@ def onCook(scriptOp):
     bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 
     model_choice = str(scriptOp.par.Model.eval())
-    model = _get_model(model_choice)
+    if model_choice == "custom":
+        model_path = scriptOp.par.Modelpath.eval().strip()
+        model = _get_model(model_path)
+    else:
+        model = _get_model(model_choice)
 
     names = _normalize_names(getattr(model, "names", getattr(model.model, "names", {})))
     prompt = scriptOp.par.Prompt.eval().strip()
