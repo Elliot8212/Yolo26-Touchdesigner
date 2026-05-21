@@ -1,6 +1,18 @@
 import re
+import sys
+import site
 import colorsys
 from typing import Dict, List, Optional
+
+# Some TouchDesigner builds embed a Python that ignores the user site-packages.
+# When pip installs without admin rights, packages go to %APPDATA%\Python\Python311\site-packages
+# which is NOT in sys.path on those builds. Add it here so imports work either way.
+try:
+    _user_site = site.getusersitepackages()
+    if _user_site and _user_site not in sys.path:
+        sys.path.append(_user_site)
+except Exception:
+    pass
 
 YOLO = None
 cv2 = None
