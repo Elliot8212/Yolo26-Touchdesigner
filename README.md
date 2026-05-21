@@ -64,27 +64,13 @@ Adjust the `cu124` index URL to match your GPU (see table above).
 
 ## Setup in TouchDesigner
 
-### Basic setup
-
 1. Place `td_yolo26.py` as a **Text DAT** in your project.
 2. Add a **Script TOP** and set its `DAT` parameter to that Text DAT.
 3. Click **Setup Parameters** on the Script TOP to create the custom parameters.
 4. Connect a video/image TOP to the Script TOP input.
 5. (Optional) Create two Table DATs named `detections` and `pose_points` to receive per-frame tabular outputs.
 
-### Recommended setup for max FPS
-
-To match the performance of similar projects (60+ FPS achievable), add a Resolution TOP **before** the Script TOP — this offloads the resize work to TD's GPU instead of doing it on CPU in Python:
-
-```
-videodevin1 → resolution1 (640×640 Best fit) → script1
-```
-
-- **Resolution TOP** with **Resolution = 640×640** and **Common → Fit = Best** — letterboxes the input to 640×640 on GPU, dramatically reducing the cost of `numpyArray()`/`copyNumpyArray()` transfers.
-
-If you need a 1280×720 display downstream, add another Resolution TOP after the Script TOP to upscale back.
-
-The script auto-detects the inference resolution from the input buffer size (rounded up to the nearest multiple of 32, as required by YOLO), so there's nothing to configure in Python — just choose your buffer size via the Resolution TOP.
+The script auto-detects the inference resolution from the input buffer size (rounded up to the nearest multiple of 32, as required by YOLO).
 
 ## Parameters (Script TOP)
 - **Model** — choose a YOLO26 weight (det/seg/pose variants).
@@ -114,9 +100,7 @@ The script auto-detects the inference resolution from the input buffer size (rou
 - The script reads the `delayed` argument default of TouchDesigner for `numpyArray()` — no extra latency knobs to tune.
 
 ## Performance tips
-- The biggest single FPS win is **adding a Resolution TOP upstream** of the Script TOP (see "Recommended setup for max FPS" above). Without it, `numpyArray()` transfer cost at full-res input is unavoidable from Python.
 - `Output = Data only (passthrough)` skips `result.plot()` (the most expensive non-inference step). Combined with TD-side overlay drawing, this is the fastest mode.
-- Lower the **Resolution TOP** size (e.g., 480×480) for faster inference; raise it (e.g., 1280×1280) for more precision. The script's `imgsz` follows automatically.
 - Set **Skip Frames = 1** to nearly double the apparent FPS while keeping detection responsiveness reasonable.
 
 ## Troubleshooting
