@@ -8,6 +8,7 @@ np = None
 
 _MODEL_CACHE: Dict[str, "YOLO"] = {}
 _TRACK_STATE = {"next": 0, "tracks": {}}
+_FRAME_STATE = {"counter": 0, "last_result": None}
 
 
 def onSetupParameters(scriptOp):
@@ -56,8 +57,8 @@ def onSetupParameters(scriptOp):
 
     pg_output = page.appendMenu("Output", label="Output")
     p_output = pg_output[0]
-    p_output.menuNames = ("overlay", "mask")
-    p_output.menuLabels = ("Overlay", "Binary Mask")
+    p_output.menuNames = ("overlay", "mask", "data")
+    p_output.menuLabels = ("Overlay (YOLO draw)", "Binary Mask", "Data only (passthrough)")
 
     pg_tracker = page.appendMenu("Tracker", label="Tracker")
     p_tracker = pg_tracker[0]
@@ -67,13 +68,26 @@ def onSetupParameters(scriptOp):
     p_segid = page.appendInt("Segid", label="SegmentationID")[0]
     p_segid.default = -1  # -1 = toutes les segmentations
 
+    p_skip = page.appendInt("Skipframes", label="Skip Frames")[0]
+    p_skip.default = 0
+    p_skip.min = 0
+    p_skip.max = 10
+    p_skip.normMin = 0
+    p_skip.normMax = 10
+
     page.appendPulse("Reload", label="ReloadModel")
+
+    p_devstatus = page.appendStr("Devicestatus", label="Device")[0]
+    p_devstatus.readOnly = True
+    p_devstatus.default = "—"
     return
 
 
 def onPulse(par):
     if par.name == "Reload":
         _MODEL_CACHE.clear()
+        _FRAME_STATE["counter"] = 0
+        _FRAME_STATE["last_result"] = None
         return True
     return False
 
@@ -271,19 +285,27 @@ def onCook(scriptOp):
         return
 
     in_top = scriptOp.inputs[0]
-    frame = in_top.numpyArray(delayed=False)
+    frame = in_top.numpyArray()
     if frame is None:
         scriptOp.addWarning("Frame vide.")
         return
 
-    frame8 = frame
-    if frame8.dtype != np.uint8:
-        frame8 = np.clip(frame8 * 255.0, 0, 255).astype(np.uint8)
-    if frame8.shape[2] < 3:
-        frame8 = np.repeat(frame8, 3, axis=2)
-    frame8 = np.flipud(frame8)
-    rgb = frame8[:, :, :3]
+    if frame.dtype != np.uint8:
+        frame = np.clip(frame * 255.0, 0, 255).astype(np.uint8)
+    if frame.shape[2] < 3:
+        frame = np.repeat(frame, 3, axis=2)
+
+    # frame_td : conserve l'orientation TD (bottom-up) pour le mode "data" (passthrough)
+    frame_td = frame
+    frame_cv = cv2.flip(frame, 0)  # cv2 coords (top-down) pour YOLO
+    rgb = frame_cv[:, :, :3]
     bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+
+    try:
+        import torch
+        cuda_ok = torch.cuda.is_available()
+    except Exception:
+        cuda_ok = False
 
     model_choice = str(scriptOp.par.Model.eval())
     if model_choice == "custom":
@@ -318,41 +340,94 @@ def onCook(scriptOp):
 
     tracker_choice = str(scriptOp.par.Tracker.eval()) if hasattr(scriptOp.par, "Tracker") else "none"
 
+    # Auto-detect imgsz depuis la taille du buffer (arrondi au multiple de 32 superieur, contrainte YOLO)
+    _max_dim = max(bgr.shape[0], bgr.shape[1])
+    imgsz = ((_max_dim + 31) // 32) * 32
+    if imgsz < 64:
+        imgsz = 64
+
     try:
-        if tracker_choice in ("bytetrack", "botsort"):
-            result = model.track(
-                source=bgr,
-                conf=conf,
-                classes=classes if classes else None,
-                tracker=f"{tracker_choice}.yaml",
-                persist=True,
-                verbose=False,
-            )[0]
-        else:
-            result = model.predict(
-                source=bgr,
-                conf=conf,
-                classes=classes if classes else None,
-                verbose=False,
-            )[0]
-    except Exception as e:
-        msg = str(e)
-        if tracker_choice in ("bytetrack", "botsort") and "lap" in msg.lower():
-            scriptOp.addWarning("Tracker requiert le module 'lap' (pip install lapx). Fallback en mode None.")
-            tracker_choice = "none"
-            try:
+        skip_frames = int(scriptOp.par.Skipframes.eval()) if hasattr(scriptOp.par, "Skipframes") else 0
+    except Exception:
+        skip_frames = 0
+    if skip_frames < 0:
+        skip_frames = 0
+
+    predict_device = 0 if cuda_ok else "cpu"
+
+    counter = _FRAME_STATE["counter"]
+    _FRAME_STATE["counter"] = counter + 1
+    run_inference = True
+    if skip_frames > 0 and _FRAME_STATE["last_result"] is not None and (counter % (skip_frames + 1)) != 0:
+        run_inference = False
+
+    if run_inference:
+        try:
+            if tracker_choice in ("bytetrack", "botsort"):
+                result = model.track(
+                    source=bgr,
+                    conf=conf,
+                    classes=classes if classes else None,
+                    tracker=f"{tracker_choice}.yaml",
+                    persist=True,
+                    verbose=False,
+                    imgsz=imgsz,
+                    device=predict_device,
+                )[0]
+            else:
                 result = model.predict(
                     source=bgr,
                     conf=conf,
                     classes=classes if classes else None,
                     verbose=False,
+                    imgsz=imgsz,
+                    device=predict_device,
                 )[0]
-            except Exception as e2:
-                scriptOp.addError(f"YOLO predict error: {e2}")
+        except Exception as e:
+            msg = str(e)
+            if tracker_choice in ("bytetrack", "botsort") and "lap" in msg.lower():
+                scriptOp.addWarning("Tracker requiert le module 'lap' (pip install lapx). Fallback en mode None.")
+                tracker_choice = "none"
+                try:
+                    result = model.predict(
+                        source=bgr,
+                        conf=conf,
+                        classes=classes if classes else None,
+                        verbose=False,
+                        imgsz=imgsz,
+                        device=predict_device,
+                    )[0]
+                except Exception as e2:
+                    scriptOp.addError(f"YOLO predict error: {e2}")
+                    return
+            else:
+                scriptOp.addError(f"YOLO predict error: {e}")
                 return
+        _FRAME_STATE["last_result"] = result
+    else:
+        result = _FRAME_STATE["last_result"]
+
+    try:
+        target = model.model
+        if hasattr(model, "predictor") and model.predictor is not None:
+            pm = getattr(model.predictor, "model", None)
+            if pm is not None:
+                inner = getattr(pm, "model", None)
+                if inner is not None and hasattr(inner, "parameters"):
+                    target = inner
+                elif hasattr(pm, "parameters"):
+                    target = pm
+        p = next(target.parameters())
+        dev = p.device
+        if dev.type == "cuda":
+            idx = dev.index if dev.index is not None else 0
+            dev_str = f"cuda:{idx} ({torch.cuda.get_device_name(idx)})"
         else:
-            scriptOp.addError(f"YOLO predict error: {e}")
-            return
+            dev_str = "cpu"
+        if hasattr(scriptOp.par, "Devicestatus") and str(scriptOp.par.Devicestatus.eval()) != dev_str:
+            scriptOp.par.Devicestatus.val = dev_str
+    except Exception:
+        pass
 
     boxes = getattr(result, "boxes", None)
     xyxy = confs = clss = track_ids = None
@@ -371,14 +446,22 @@ def onCook(scriptOp):
     if output_mode == "mask":
         if masks is not None and masks.data is not None and masks.data.shape[0] > 0:
             out_img = _build_mask(result, rgb.shape[0], rgb.shape[1], scriptOp, seg_id, track_ids)
-            out_img = np.flipud(out_img)
+            out_img = cv2.flip(out_img, 0)
         else:
             out_img = np.zeros((rgb.shape[0], rgb.shape[1], 4), dtype=np.uint8)
-            out_img = np.flipud(out_img)
+    elif output_mode == "data":
+        # Passthrough: source frame intact, pas de result.plot() => gros gain perf
+        # Le dessin des boxes/labels se fait cote TD via les DATs detections/pose_points
+        if frame_td.shape[2] >= 4:
+            out_img = frame_td[:, :, :4]
+        else:
+            out_img = np.empty((frame_td.shape[0], frame_td.shape[1], 4), dtype=np.uint8)
+            out_img[..., :3] = frame_td[..., :3]
+            out_img[..., 3] = 255
     else:
         annotated = result.plot()  # BGR uint8 avec overlay natif
+        annotated = cv2.flip(annotated, 0)  # vertical flip (TD coord) — SIMD, contiguous out
         out_img = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGBA)
-        out_img = np.flipud(out_img)
 
     det_dat = op('detections')  # Table DAT optionnel (bboxes)
     pose_dat = op('pose_points')  # Table DAT optionnel (keypoints)

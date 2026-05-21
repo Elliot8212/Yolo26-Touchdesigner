@@ -1,0 +1,24 @@
+# TouchDesigner auto-backups
+Backup/
+*.toe.bak
+*.toe.tmp
+Yolo26.[0-9]*.toe
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.backup
+
+# YOLO model weights (auto-downloaded by ultralytics on first run)
+*.pt
+*.onnx
+*.engine
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
