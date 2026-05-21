@@ -1,6 +1,6 @@
 # TouchDesigner + YOLO26 (Script TOP)
 
-Python Script TOP for TouchDesigner that runs YOLO v2.6 models (detection, segmentation, pose) with prompt filtering, native YOLO overlay or mask output, and optional tracking (ByteTrack / BoT-SORT) for stable IDs and colors.
+Python Script TOP for TouchDesigner that runs YOLO26 models (detection, segmentation, pose) with prompt filtering, native YOLO overlay or mask output, and optional tracking (ByteTrack / BoT-SORT) for stable IDs and colors.
 ![Detection](Assets/detect.gif) ![Segmentation](Assets/seg.gif) ![Pose](Assets/pose.gif)
 
 ## Features
