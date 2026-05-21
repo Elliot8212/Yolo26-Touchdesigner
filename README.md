@@ -74,13 +74,12 @@ Adjust the `cu124` index URL to match your GPU (see table above).
 
 ### Recommended setup for max FPS
 
-To match the performance of similar projects (60+ FPS achievable), add two TOPs **before** the Script TOP — this offloads the flip + resize work to TD's GPU instead of doing it on CPU in Python:
+To match the performance of similar projects (60+ FPS achievable), add a Resolution TOP **before** the Script TOP — this offloads the resize work to TD's GPU instead of doing it on CPU in Python:
 
 ```
-videodevin1 → flip1 (Flip Y) → resolution1 (640×640 Best fit) → script1
+videodevin1 → resolution1 (640×640 Best fit) → script1
 ```
 
-- **Flip TOP** with **Flip Y = On** — handles the vertical orientation flip on GPU (~0.3 ms vs ~1–2 ms in Python).
 - **Resolution TOP** with **Resolution = 640×640** and **Common → Fit = Best** — letterboxes the input to 640×640 on GPU, dramatically reducing the cost of `numpyArray()`/`copyNumpyArray()` transfers.
 
 If you need a 1280×720 display downstream, add another Resolution TOP after the Script TOP to upscale back.
@@ -115,7 +114,7 @@ The script auto-detects the inference resolution from the input buffer size (rou
 - The script reads the `delayed` argument default of TouchDesigner for `numpyArray()` — no extra latency knobs to tune.
 
 ## Performance tips
-- The biggest single FPS win is **adding a Flip TOP + Resolution TOP upstream** of the Script TOP (see "Recommended setup for max FPS" above). Without it, `numpyArray()` transfer cost at full-res input is unavoidable from Python.
+- The biggest single FPS win is **adding a Resolution TOP upstream** of the Script TOP (see "Recommended setup for max FPS" above). Without it, `numpyArray()` transfer cost at full-res input is unavoidable from Python.
 - `Output = Data only (passthrough)` skips `result.plot()` (the most expensive non-inference step). Combined with TD-side overlay drawing, this is the fastest mode.
 - Lower the **Resolution TOP** size (e.g., 480×480) for faster inference; raise it (e.g., 1280×1280) for more precision. The script's `imgsz` follows automatically.
 - Set **Skip Frames = 1** to nearly double the apparent FPS while keeping detection responsiveness reasonable.
@@ -125,4 +124,3 @@ The script auto-detects the inference resolution from the input buffer size (rou
 - **Missing Python modules:** rerun `install_td.bat`.
 - **Device shows `cpu` but you have an NVIDIA GPU:** check that the installer ran successfully and that `nvidia-smi` is available in your PATH. Re-run the installer; CUDA selection is automatic.
 - **Tracking slowdown or errors:** switch `Tracker` to `None` if `lapx` is unavailable or performance is critical.
-- **Detection box positions look offset:** make sure the Flip TOP is set to **Flip Y = On** only (not X). The Script TOP expects standard image orientation after the flip.
