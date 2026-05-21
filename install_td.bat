@@ -1,6 +1,6 @@
 @echo off
-REM Launcher pour install_td.ps1 - permet le double-clic depuis l'Explorateur Windows
-REM sans toucher a la policy d'execution PowerShell de la machine.
+REM Launcher for install_td.ps1 - allows double-clicking from Windows Explorer
+REM without changing the machine's PowerShell execution policy.
 
 setlocal
 set "SCRIPT_DIR=%~dp0"
