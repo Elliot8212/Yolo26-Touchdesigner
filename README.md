@@ -99,10 +99,6 @@ The script auto-detects the inference resolution from the input buffer size (rou
 - Masks and IDs remain stable across frames when tracking is enabled.
 - The script reads the `delayed` argument default of TouchDesigner for `numpyArray()` — no extra latency knobs to tune.
 
-## Performance tips
-- `Output = Data only (passthrough)` skips `result.plot()` (the most expensive non-inference step). Combined with TD-side overlay drawing, this is the fastest mode.
-- Set **Skip Frames = 1** to nearly double the apparent FPS while keeping detection responsiveness reasonable.
-
 ## Troubleshooting
 - **No output:** ensure an input TOP is connected and the selected model matches the task (e.g., seg model for masks).
 - **Missing Python modules:** rerun `install_td.bat`.
