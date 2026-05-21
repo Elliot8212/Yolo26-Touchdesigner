@@ -173,7 +173,14 @@ except Exception as e:
     print(f"  {'lap (lapx)':<14}: NOT installed ({e}) - ByteTrack/BoT-SORT tracking disabled")
 '@
 
-& $TD_PY -c $verifyCode
+# Write to a temp .py file to avoid PowerShell multi-line -c quoting issues
+$tempScript = Join-Path ([System.IO.Path]::GetTempPath()) ("yolo26_verify_" + [System.Guid]::NewGuid().ToString("N") + ".py")
+try {
+    [System.IO.File]::WriteAllText($tempScript, $verifyCode, (New-Object System.Text.UTF8Encoding $false))
+    & $TD_PY $tempScript
+} finally {
+    Remove-Item $tempScript -ErrorAction SilentlyContinue
+}
 
 Write-Host ""
 Write-Host "===========================================" -ForegroundColor Green
